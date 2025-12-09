@@ -9,7 +9,7 @@ const port =process.env.PORT || 3000
 app.use(express.json());
 app.use(cors())
 
-// ZOPEW8wI8GrK91MJ 
+
 
 const uri = `mongodb+srv://${process.env.MANAGEMENT_DB}:${process.env.MANAGEMENT_PASSWORD}@cluster0.ri8wtve.mongodb.net/?appName=Cluster0`;
 
@@ -20,11 +20,20 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-let db;
+
+let db, users, assets, requests, assignedAssets, packages, payments, employeeAffiliations;
 async function connectDB() {
   try {
     await client.connect();
     db = client.db("assetverse");
+    // collection 
+    users = db.collection("users");
+    assets = db.collection("assets");
+    requests = db.collection("requests");
+    assignedAssets = db.collection("assignedAssets");
+    packages = db.collection("packages");
+    payments = db.collection("payments");
+    employeeAffiliations = db.collection("employeeAffiliations");
     console.log("MongoDB Connected");
   } catch (err) {
     console.error(err);
