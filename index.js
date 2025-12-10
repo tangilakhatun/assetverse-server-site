@@ -82,6 +82,17 @@ app.post("/api/users/register/hr", async (req,res)=>{
     res.json({ message:"HR registered" });
 });
 
+// register emploee 
+
+app.post("/api/users/register/employee", async (req,res)=>{
+    const { name,email,password,dateOfBirth } = req.body;
+    const existing = await users.findOne({ email });
+    if(existing) return res.status(400).json({ message:"Email exists" });
+    const hashed = await bcrypt.hash(password,10);
+    const newEmp = { name,email,password:hashed,role:"employee",dateOfBirth,createdAt:new Date(),updatedAt:new Date() };
+    await users.insertOne(newEmp);
+    res.json({ message:"Employee registered" });
+});
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
