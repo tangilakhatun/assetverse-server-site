@@ -71,8 +71,16 @@ app.post("/api/auth/firebase-login", async (req,res)=>{
     res.json({ token });
 });
 
-
-
+// register hr 
+app.post("/api/users/register/hr", async (req,res)=>{
+    const { name, email, password, companyName, companyLogo, dateOfBirth } = req.body;
+    const existing = await users.findOne({ email });
+    if(existing) return res.status(400).json({ message:"Email exists" });
+    const hashed = await bcrypt.hash(password, 10);
+    const newHR = { name,email,password:hashed,companyName,companyLogo,role:"hr",packageLimit:5,currentEmployees:0,subscription:"basic",dateOfBirth,createdAt:new Date(),updatedAt:new Date() };
+    await users.insertOne(newHR);
+    res.json({ message:"HR registered" });
+});
 
 
 app.get('/', (req, res) => {
