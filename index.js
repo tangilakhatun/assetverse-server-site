@@ -46,6 +46,7 @@ async function connectDB() {
   try {
     await client.connect();
     db = client.db("assetverse");
+
     // collection 
     users = db.collection("users");
     assets = db.collection("assets");
@@ -60,6 +61,18 @@ async function connectDB() {
   }
 }
 connectDB();
+
+// login 
+app.post("/api/auth/firebase-login", async (req,res)=>{
+    const { email } = req.body;
+    const user = await users.findOne({ email });
+    if(!user) return res.status(404).json({ message:"User not found" });
+    const token = jwt.sign({ email:user.email, role:user.role }, JWT_SECRET, { expiresIn:"7d" });
+    res.json({ token });
+});
+
+
+
 
 
 app.get('/', (req, res) => {
