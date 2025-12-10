@@ -2,6 +2,7 @@ const express = require('express')
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const cors =require('cors')
 const app = express();
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require('dotenv').config()
 const port =process.env.PORT || 3000
@@ -10,8 +11,6 @@ const JWT_SECRET = process.env.JWT_SECRET
 // middleware 
 app.use(express.json());
 app.use(cors())
-
-
 
 const uri = `mongodb+srv://${process.env.MANAGEMENT_DB}:${process.env.MANAGEMENT_PASSWORD}@cluster0.ri8wtve.mongodb.net/?appName=Cluster0`;
 
@@ -22,6 +21,25 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+// verifytoken 
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if(!authHeader) return res.status(401).json({ message: "No token" });
+    const token = authHeader.split(" ")[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch(err) {
+        res.status(401).json({ message: "Invalid token" });
+    }
+};
+
+const verifyHR = (req,res,next)=>{
+    if(req.user.role !== "hr") return res.status(403).json({ message:"Not allowed" });
+    next();
+};
 
 let db, users, assets, requests, assignedAssets, packages, payments, employeeAffiliations;
 async function connectDB() {
