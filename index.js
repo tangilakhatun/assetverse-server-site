@@ -2,8 +2,10 @@ const express = require('express')
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const cors =require('cors')
 const app = express();
+const jwt = require("jsonwebtoken");
 require('dotenv').config()
 const port =process.env.PORT || 3000
+const JWT_SECRET = process.env.JWT_SECRET
 
 // middleware 
 app.use(express.json());
