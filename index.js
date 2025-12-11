@@ -62,6 +62,21 @@ async function connectDB() {
 }
 connectDB();
 
+// user profil
+app.get("/api/users/me", verifyToken, async (req, res) => {
+    const user = await users.findOne({ email: req.user.email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+});
+
+// update profile 
+
+app.put("/api/users/me", verifyToken, async (req,res)=>{
+    const update = { ...req.body, updatedAt:new Date() };
+    await users.updateOne({ email:req.user.email }, { $set:update });
+    res.json({ message:"Updated" });
+});
+
 // login 
 app.post("/api/auth/firebase-login", async (req,res)=>{
     const { email } = req.body;
