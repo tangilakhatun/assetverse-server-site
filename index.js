@@ -109,6 +109,39 @@ app.post("/api/users/register/employee", async (req,res)=>{
     res.json({ message:"Employee registered" });
 });
 
+             //  assets crud operations
+
+//  Get all assets 
+app.get("/api/assets", verifyToken, async (req,res)=>{
+    const data = await assets.find({}).toArray();
+    res.json(data);
+});
+
+// Add Asset (HR)
+app.post("/api/assets", verifyToken, verifyHR, async (req,res)=>{
+    const { productName, productImage, productType, productQuantity } = req.body;
+    const asset = { productName, productImage, productType, productQuantity, availableQuantity:productQuantity, dateAdded:new Date(), hrEmail:req.user.email, companyName:req.user.companyName };
+    await assets.insertOne(asset);
+    res.json({ message:"Asset added" });
+});
+
+// Update Asset (HR)
+app.put("/api/assets/:id", verifyToken, verifyHR, async (req,res)=>{
+    const { id } = req.params;
+    await assets.updateOne({ _id:ObjectId(id) }, { $set:req.body });
+    res.json({ message:"Asset updated" });
+});
+
+// Delete Asset
+app.delete("/api/assets/:id", verifyToken, verifyHR, async (req,res)=>{
+    const { id } = req.params;
+    await assets.deleteOne({ _id:ObjectId(id) });
+    res.json({ message:"Asset deleted" });
+});
+
+            // end assets crud operations 
+
+
 app.get('/', (req, res) => {
   res.send('Hello World!')
 })
