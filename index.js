@@ -196,6 +196,25 @@ app.get("/api/requests", verifyToken, verifyHR, async (req,res)=>{
 });
 
                  // request api end 
+      //  assigned assets 
+
+      app.get("/api/assigned/my-assets", verifyToken, async (req,res)=>{
+    const data = await assignedAssets.find({ employeeEmail:req.user.email }).toArray();
+    res.json(data);
+});
+
+// Return asset
+app.put("/api/assigned/:id/return", verifyToken, async (req,res)=>{
+    const { id } = req.params;
+    const doc = await assignedAssets.findOne({ _id:ObjectId(id) });
+    if(!doc) return res.status(404).json({ message:"Not found" });
+    if(doc.status === "returned") return res.status(400).json({ message:"Already returned" });
+
+    await assignedAssets.updateOne({ _id:ObjectId(id) }, { $set:{ status:"returned", returnDate:new Date() } });
+    await assets.updateOne({ _id:doc.assetId }, { $inc:{ availableQuantity:1 } });
+    res.json({ message:"Asset returned" });
+});
+
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
