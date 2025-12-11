@@ -141,6 +141,61 @@ app.delete("/api/assets/:id", verifyToken, verifyHR, async (req,res)=>{
 
             // end assets crud operations 
 
+            // requests api start
+            
+// employee requests asset
+app.post("/api/requests", verifyToken, async (req,res)=>{
+    const { assetId,note } = req.body;
+    const asset = await assets.findOne({ _id:ObjectId(assetId) });
+    if(!asset || asset.availableQuantity < 1) return res.status(400).json({ message:"Not available" });
+
+    // create request
+    const reqDoc = { assetId:ObjectId(assetId), assetName:asset.productName, assetType:asset.productType, requesterName:req.user.name, requesterEmail:req.user.email, hrEmail:asset.hrEmail, companyName:asset.companyName, requestDate:new Date(), approvalDate:null, requestStatus:"pending", note };
+    await requests.insertOne(reqDoc);
+    res.json({ message:"Request created" });
+});
+
+// hr approves request
+app.put("/api/requests/:id/approve", verifyToken, verifyHR, async (req,res)=>{
+    const { id } = req.params;
+    const reqDoc = await requests.findOne({ _id:ObjectId(id) });
+    if(!reqDoc) return res.status(404).json({ message:"Not found" });
+
+    // check package limit
+    const hr = await users.findOne({ email:req.user.email });
+    const activeAffiliations = await employeeAffiliations.countDocuments({ hrEmail:req.user.email,status:"active" });
+    if(activeAffiliations >= hr.packageLimit) return res.status(400).json({ message:"Package limit reached" });
+// approve request
+    await requests.updateOne({ _id:ObjectId(id) }, { $set:{ requestStatus:"approved", approvalDate:new Date(), processedBy:req.user.email } });
+
+    // deduct available quantity
+    await assets.updateOne({ _id:reqDoc.assetId }, { $inc:{ availableQuantity:-1 } });
+
+    // assign asset
+    const assign = { assetId:reqDoc.assetId, assetName:reqDoc.assetName, assetImage:reqDoc.assetImage || "", assetType:reqDoc.assetType, employeeEmail:reqDoc.requesterEmail, employeeName:reqDoc.requesterName, hrEmail:reqDoc.hrEmail, companyName:reqDoc.companyName, assignmentDate:new Date(), returnDate:null, status:"assigned" };
+    await assignedAssets.insertOne(assign);
+
+    // create affiliation if first request
+    const exists = await employeeAffiliations.findOne({ employeeEmail:reqDoc.requesterEmail, hrEmail:req.user.email });
+    if(!exists) await employeeAffiliations.insertOne({ employeeEmail:reqDoc.requesterEmail, employeeName:reqDoc.requesterName, hrEmail:req.user.email, companyName:req.user.companyName, companyLogo:req.user.companyLogo, affiliationDate:new Date(), status:"active" });
+
+    res.json({ message:"Request approved" });
+});
+
+// hr rejects request
+app.put("/api/requests/:id/reject", verifyToken, verifyHR, async (req,res)=>{
+    const { id } = req.params;
+    await requests.updateOne({ _id:ObjectId(id) }, { $set:{ requestStatus:"rejected", approvalDate:new Date(), processedBy:req.user.email } });
+    res.json({ message:"Request rejected" });
+});
+
+// get all requests (hr)
+app.get("/api/requests", verifyToken, verifyHR, async (req,res)=>{
+    const data = await requests.find({ hrEmail:req.user.email }).toArray();
+    res.json(data);
+});
+
+                 // request api end 
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
