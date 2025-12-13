@@ -4,9 +4,12 @@ const cors =require('cors')
 const app = express();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe");
 require('dotenv').config()
 const port =process.env.PORT || 3000
 const JWT_SECRET = process.env.JWT_SECRET
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
+const stripeInstance = stripe(STRIPE_KEY);
 
 // middleware 
 app.use(express.json());
@@ -61,6 +64,7 @@ async function connectDB() {
   }
 }
 connectDB();
+
 
 // user profil
 app.get("/api/users/me", verifyToken, async (req, res) => {
@@ -214,6 +218,21 @@ app.put("/api/assigned/:id/return", verifyToken, async (req,res)=>{
     await assets.updateOne({ _id:doc.assetId }, { $inc:{ availableQuantity:1 } });
     res.json({ message:"Asset returned" });
 });
+
+// employees list 
+   app.get("/api/employees", verifyToken, verifyHR, async (req,res)=>{
+    const data = await employeeAffiliations.find({ hrEmail:req.user.email }).toArray();
+    res.json(data);
+});
+
+// Remove Employee
+app.delete("/api/employees/:email", verifyToken, verifyHR, async (req,res)=>{
+    const { email } = req.params;
+    await employeeAffiliations.updateMany({ employeeEmail:email, hrEmail:req.user.email }, { $set:{ status:"inactive" } });
+    await assignedAssets.updateMany({ employeeEmail:email, hrEmail:req.user.email, status:"assigned" }, { $set:{ status:"returned", returnDate:new Date() } });
+    res.json({ message:"Employee removed" });
+});
+
 
 
 app.get('/', (req, res) => {
