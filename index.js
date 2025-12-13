@@ -232,8 +232,22 @@ app.delete("/api/employees/:email", verifyToken, verifyHR, async (req,res)=>{
     await assignedAssets.updateMany({ employeeEmail:email, hrEmail:req.user.email, status:"assigned" }, { $set:{ status:"returned", returnDate:new Date() } });
     res.json({ message:"Employee removed" });
 });
+    // packages 
 
 
+// Get packages
+app.get("/api/packages", async (req,res)=>{
+    const data = await packages.find({}).toArray();
+    res.json(data);
+});
+
+// Upgrade package (Stripe)
+app.post("/api/packages/upgrade", verifyToken, verifyHR, async (req,res)=>{
+    const { packageName, employeeLimit, amount, transactionId } = req.body;
+    await users.updateOne({ email:req.user.email }, { $set:{ packageLimit:employeeLimit, subscription:packageName, updatedAt:new Date() } });
+    await payments.insertOne({ hrEmail:req.user.email, packageName, employeeLimit, amount, transactionId, paymentDate:new Date(), status:"completed" });
+    res.json({ message:"Package upgraded" });
+});
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
