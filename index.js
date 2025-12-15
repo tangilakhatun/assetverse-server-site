@@ -240,6 +240,20 @@ app.get("/api/packages", async (req,res)=>{
     const data = await packages.find({}).toArray();
     res.json(data);
 });
+// GET employee/my-team
+app.get("/api/employee/my-team", verifyToken, async (req, res) => {
+  try {
+    
+    const data = await employeeAffiliations
+      .find({ employeeEmail: req.user.email, status: "active" })
+      .toArray();
+
+    res.json(data);
+  } catch (err) {
+    console.error("Error fetching employee team:", err);
+    res.status(500).json({ message: "Failed to load team", error: err.message });
+  }
+});
 
 // Upgrade package (Stripe)
 app.post("/api/packages/upgrade", verifyToken, verifyHR, async (req,res)=>{
@@ -247,6 +261,23 @@ app.post("/api/packages/upgrade", verifyToken, verifyHR, async (req,res)=>{
     await users.updateOne({ email:req.user.email }, { $set:{ packageLimit:employeeLimit, subscription:packageName, updatedAt:new Date() } });
     await payments.insertOne({ hrEmail:req.user.email, packageName, employeeLimit, amount, transactionId, paymentDate:new Date(), status:"completed" });
     res.json({ message:"Package upgraded" });
+});
+
+ // Top 5 requested assets
+app.get("/api/assets/top-requested", verifyToken, verifyHR, async (req,res)=>{
+    try{
+        // Group requests by assetName and count
+        const pipeline = [
+            { $match: { hrEmail: req.user.email } }, // only this HR's requests
+            { $group: { _id: "$assetName", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ];
+        const topAssets = await requests.aggregate(pipeline).toArray();
+        res.json(topAssets.map(a => ({ name: a._id, requests: a.count })));
+    } catch(err) {
+        res.status(500).json({ message:"Server error", error: err.message });
+    }
 });
 
 app.get('/', (req, res) => {
