@@ -44,26 +44,62 @@ const verifyHR = (req,res,next)=>{
     next();
 };
 
-let db, users, assets, requests, assignedAssets, packages, payments, employeeAffiliations;
-async function connectDB() {
-  try {
-    await client.connect();
-    db = client.db("assetverse");
+// let db, users, assets, requests, assignedAssets, packages, payments, employeeAffiliations;
+// async function connectDB() {
+//   try {
+//     // await client.connect();
+//     db = client.db("assetverse");
 
-    // collection 
-    users = db.collection("users");
-    assets = db.collection("assets");
-    requests = db.collection("requests");
-    assignedAssets = db.collection("assignedAssets");
-    packages = db.collection("packages");
-    payments = db.collection("payments");
-    employeeAffiliations = db.collection("employeeAffiliations");
-    console.log("MongoDB Connected");
+//     // collection 
+//     users = db.collection("users");
+//     assets = db.collection("assets");
+//     requests = db.collection("requests");
+//     assignedAssets = db.collection("assignedAssets");
+//     packages = db.collection("packages");
+//     payments = db.collection("payments");
+//     employeeAffiliations = db.collection("employeeAffiliations");
+//     console.log("MongoDB Connected");
+//   } catch (err) {
+//     console.error(err);
+//   }
+// }
+// connectDB();
+let db,
+  users,
+  assets,
+  requests,
+  assignedAssets,
+  packages,
+  payments,
+  employeeAffiliations;
+
+let isConnected = false;
+
+async function ensureDB(req, res, next) {
+  try {
+    if (!isConnected) {
+      await client.connect();
+      db = client.db("assetverse");
+
+      users = db.collection("users");
+      assets = db.collection("assets");
+      requests = db.collection("requests");
+      assignedAssets = db.collection("assignedAssets");
+      packages = db.collection("packages");
+      payments = db.collection("payments");
+      employeeAffiliations = db.collection("employeeAffiliations");
+
+      isConnected = true;
+      console.log("✅ MongoDB connected (Vercel)");
+    }
+    next();
   } catch (err) {
-    console.error(err);
+    console.error("❌ DB Error:", err);
+    res.status(500).json({ message: "Database connection failed" });
   }
 }
-connectDB();
+
+app.use(ensureDB);
 
 
 // user profil
@@ -88,12 +124,30 @@ app.put("/api/users/me", verifyToken, async (req,res)=>{
 });
 
 // login 
-app.post("/api/auth/firebase-login", async (req,res)=>{
-    const { email } = req.body;
-    const user = await users.findOne({ email });
-    if(!user) return res.status(404).json({ message:"User not found" });
-    const token = jwt.sign({ email:user.email, role:user.role, companyName: user.companyName  }, JWT_SECRET, { expiresIn:"7d" });
-    res.json({ token });
+// app.post("/api/auth/firebase-login", async (req,res)=>{
+//     const { email } = req.body;
+//     const user = await users.findOne({ email });
+//     if(!user) return res.status(404).json({ message:"User not found" });
+//     const token = jwt.sign({ email:user.email, role:user.role, companyName: user.companyName  }, JWT_SECRET, { expiresIn:"7d" });
+//     res.json({ token });
+// });
+app.post("/api/auth/firebase-login", async (req, res) => {
+  if (!users) {
+    return res.status(503).json({ message: "DB not ready, try again" });
+  }
+
+  const { email } = req.body;
+
+  const user = await users.findOne({ email });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  const token = jwt.sign(
+    { email: user.email, role: user.role, companyName: user.companyName },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  res.json({ token });
 });
 
 // register hr 
@@ -511,6 +565,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!')
 })
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`)
+// })
+module.exports = app;
